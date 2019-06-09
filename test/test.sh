@@ -3,9 +3,9 @@ try() {
     expected="$1"
     input="$2"
 
-    ./../dist/ccpr "$input" > tmp.s
-    gcc -o tmp tmp.s
-    ./tmp
+    dist/ccpr "$input" > tmp/tmp.s
+    gcc -o tmp/tmp tmp/tmp.s
+    tmp/tmp
     actual="$?"
 
     if [ "$actual" = "$expected" ]; then

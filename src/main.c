@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
 //-----------------------------------
 //前方宣言
@@ -85,8 +86,8 @@ NODE* CreateNode(int nodeType, NODE* lhs, NODE* rhs){
     NODE* node = malloc(sizeof(NODE));
 
     node->nodeType = nodeType;
-    node->lhs = lhs;
-    node->rhs = rhs;
+    node->lhs = (struct NODE*)lhs;
+    node->rhs = (struct NODE*)rhs;
     node->value = 0;
 
     return node;
@@ -101,6 +102,14 @@ NODE* CreateNumNode(int value){
     node->value = value;
 
     return node;
+}
+
+bool Consume(int tokenType){
+    if(tokens[tokenIdx].tokenType != tokenType){
+        return false;
+    }
+    ++tokenIdx;
+    return true;
 }
 
 NODE* Expr(void);
@@ -148,14 +157,6 @@ NODE* Expr(void){
     }
 }
 
-int Consume(int tokenType){
-    if(tokens[tokenIdx].tokenType != tokenType){
-        return 0;
-    }
-    ++tokenIdx;
-    return 1;
-}
-
 //userInputが指してる文字列をトークンに分割してtokensに保存をする
 void Tokenize(void){
     char* top = userInput;
@@ -168,8 +169,8 @@ void Tokenize(void){
             continue;
         }
 
-        //+ - 記号
-        if(*top == '+' || *top == '-'){
+        //+ - * / ( ) 記号
+        if(*top == '+' || *top == '-' || *top == '(' || *top == ')' || *top == '*' || *top == '/'){
             tokens[idx].tokenType = *top;
             tokens[idx].input = top;
             ++idx;

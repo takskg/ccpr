@@ -130,8 +130,17 @@ NODE* Term(void){
 
     ErrorAt(tokens[tokenIdx].input, "数値でも閉じカッコでもないトークンです");
 }
+NODE* Unary(void){
+    if(Consume('+')){
+        return Term();
+    }
+    if(Consume('-')){
+        return CreateNode('-', CreateNumNode(0), Term());
+    }
+    return Term();
+}
 NODE* Mul(void){
-    NODE* node = Term();
+    NODE* node = Unary();
 
     for(;;){
         if(Consume('*')){

@@ -18,6 +18,10 @@
 //トークンの型を表す値
 enum{
     TK_NUM=256, //整数
+    TK_EQ,      //==
+    TK_NE,      //!=
+    TK_LE,      //<=
+    TK_GE,      //>=
     TK_EOF      //入力の終わり
 };
 //ノードの型を表す値
@@ -139,6 +143,7 @@ NODE* Unary(void){
     }
     return Term();
 }
+//* /
 NODE* Mul(void){
     NODE* node = Unary();
 
@@ -152,7 +157,8 @@ NODE* Mul(void){
         }
     }
 }
-NODE* Expr(void){
+//+ -
+NODE* Add(void){
     NODE* node = Mul();
 
     for(;;){
@@ -164,6 +170,41 @@ NODE* Expr(void){
             return node;
         }
     }
+}
+//> >= <= <
+NODE* Relational(void){
+    NODE* node = Add();
+
+    for(;;){
+        if(Consume('>')){
+            node = CreateNode('>', node, Add());
+        }else if(Consume('<')){
+            node = CreateNode('<', node, Add());
+        }else if(Consume(TK_LE)){
+            node = CreateNode(TK_LE, node, Add());
+        }else if(Consume(TK_GE)){
+            node = CreateNode(TK_GE, node, Add());
+        }else{
+            return node;
+        }
+    }
+}
+//== !=
+NODE* Equality(void){
+    NODE* node = Relational();
+
+    for(;;){
+        if(Consume(TK_EQ)){
+            node = CreateNode(TK_EQ, node, Relational());
+        }else if(Consume(TK_NE)){
+            node = CreateNode(TK_NE, node, Relational());
+        }else{
+            return node;
+        }
+    }
+}
+NODE* Expr(void){
+    return Equality();
 }
 
 //userInputが指してる文字列をトークンに分割してtokensに保存をする
@@ -185,6 +226,89 @@ void Tokenize(void){
             ++idx;
             ++top;
             continue;
+        }
+
+        //==
+        if(*top == '='){
+            if(++top){
+                if(*top == '='){
+                    tokens[idx].tokenType = TK_EQ;
+                    tokens[idx].input = top;
+                    ++idx;
+                    ++top;
+                    continue;
+                }else{
+                    //=はまだ未対応
+                    ErrorAt(top, "=のトークナイズは未対応です");
+                }
+            }else{
+                ErrorAt(--top, "トークナイズできません");
+            }
+        }
+
+        //!=
+        if(*top == '!'){
+            if(++top){
+                if(*top == '='){
+                    tokens[idx].tokenType = TK_NE;
+                    tokens[idx].input = top;
+                    ++idx;
+                    ++top;
+                    continue;
+                }else{
+                    //!はまだ未対応
+                    ErrorAt(top, "!のトークナイズは未対応です");
+                }
+            }else{
+                ErrorAt(--top, "トークナイズできません");
+            }
+        }
+
+        //< <=
+        if(*top == '<'){
+            ++top;
+            if(*top){
+                if(*top == '='){
+                    tokens[idx].tokenType = TK_LE;
+                    tokens[idx].input = top;
+                    ++idx;
+                    ++top;
+                    continue;
+                }else{
+                    --top;
+                    tokens[idx].tokenType = *top;
+                    tokens[idx].input = top;
+                    ++idx;
+                    ++top;
+                    continue;
+                }
+            }else{
+                //<の後がないってことはありえないはず
+                ErrorAt(--top, "トークナイズできません");
+            }
+        }
+        //> >=
+        if(*top == '>'){
+            ++top;
+            if(*top){
+                if(*top == '='){
+                    tokens[idx].tokenType = TK_GE;
+                    tokens[idx].input = top;
+                    ++idx;
+                    ++top;
+                    continue;
+                }else{
+                    --top;
+                    tokens[idx].tokenType = *top;
+                    tokens[idx].input = top;
+                    ++idx;
+                    ++top;
+                    continue;
+                }
+            }else{
+                //>の後がないってことはありえないはず
+                ErrorAt(--top, "トークナイズできません");
+            }
         }
 
         //数値
@@ -228,6 +352,36 @@ void Gen(NODE* node){
     case '/':
         printf("  cqo\n");
         printf("  idiv rdi\n");
+        break;
+    case TK_EQ:// ==
+        printf("  cmp rax, rdi\n");
+        printf("  sete al\n");
+        printf("  movzb rax, al\n");
+        break;
+    case TK_NE:// !=
+        printf("  cmp rax, rdi\n");
+        printf("  setne al\n");
+        printf("  movzb rax, al\n");
+        break;
+    case '<':
+        printf("  cmp rax, rdi\n");
+        printf("  setl al\n");
+        printf("  movzb rax, al\n");
+        break;
+    case TK_LE:// <=
+        printf("  cmp rax, rdi\n");
+        printf("  setle al\n");
+        printf("  movzb rax, al\n");
+        break;
+    case '>':
+        printf("  cmp rdi, rax\n");
+        printf("  setl al\n");
+        printf("  movzb rax, al\n");
+        break;
+    case TK_GE:// >=
+        printf("  cmp rdi, rax\n");
+        printf("  setle al\n");
+        printf("  movzb rax, al\n");
         break;
 
     default:

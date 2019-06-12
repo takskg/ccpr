@@ -1,9 +1,15 @@
-ccpr: src/main.c
-		gcc -o dist/ccpr src/main.c
+CFLAGS=-std=c11 -Wall -g -static
+SRCS=$(wildcard src/*.c)
+OBJS=$(SRCS:.c=.o)
+
+ccpr: $(OBJS)
+		$(CC) -o dist/ccpr $(OBJS) $(LDFLAGS)
+
+$(OBJS): src/ccpr.h
 
 test: clean ccpr
 		dist/ccpr --test
 		test/test.sh
 
 clean:
-		rm -f ccpr *.o *~ tmp/*
+		rm -f ccpr src/*.o *~ tmp/*

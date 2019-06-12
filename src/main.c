@@ -6,6 +6,13 @@
 #include <string.h>
 #include <stdbool.h>
 
+
+//-----------------------------------
+//マクロ
+//-----------------------------------
+
+#define CAST_TOKEN_PTR(ptr) ((TOKEN*)(ptr))
+
 //-----------------------------------
 //前方宣言
 //-----------------------------------
@@ -35,20 +42,20 @@ enum{
 //-----------------------------------
 
 //トークンの型
-typedef struct{
+typedef struct TOKEN{
     int tokenType;  //トークンの型
     int value;      //tokenTypeがTK_NUMの場合の値
     char* input;    //トークン文字列（エラーメッセージ用）
 } TOKEN;
 //ノード
-typedef struct{
+typedef struct NODE{
     int nodeType;       //ノード型
     struct NODE* lhs;   //左辺
     struct NODE* rhs;   //右辺
     int value;          //nodeTypeがND_NUMの場合の値
 } NODE;
 //ベクタ
-typedef struct{
+typedef struct VECTOR{
     void** data;    //データ
     int capacity;   //バッファサイズ
     int len;        //要素数
@@ -62,9 +69,8 @@ typedef struct{
 //入力プログラム
 char* userInput;
 
-//トークナイズした結果のトークン配列
-//とりあえずトークンは100個まで
-TOKEN tokens[100];
+//トークナイズした結果のトークン
+VECTOR* tokenVec;
 int tokenIdx;
 
 
@@ -129,7 +135,7 @@ void RunVectorTest(void){
     VECTOR* vec = CreateVector();
     Expect(__LINE__, 0, vec->len);
 
-    for(int idx=0; idx < 100; ++idx){
+    for(long idx=0; idx < 100; ++idx){
         PushVector(vec, (void*)idx);
     }
 
@@ -140,6 +146,13 @@ void RunVectorTest(void){
     Expect(__LINE__, 99, (long)vec->data[99]);
 
     printf("OK\n");
+}
+
+//トークンの作成
+TOKEN* CreateToken(void){
+    TOKEN* token = malloc(sizeof(TOKEN));
+    memset(token, 0, sizeof(TOKEN));
+    return token;
 }
 
 
@@ -167,10 +180,13 @@ NODE* CreateNumNode(int value){
 }
 
 bool Consume(int tokenType){
-    if(tokens[tokenIdx].tokenType != tokenType){
+    if(CAST_TOKEN_PTR(tokenVec->data[tokenIdx])->tokenType != tokenType){
         return false;
     }
     ++tokenIdx;
+    if(tokenIdx > tokenVec->len){
+        Error("トークンの最大値を超えました。ロジックエラーの可能性があります");
+    }
     return true;
 }
 
@@ -180,17 +196,17 @@ NODE* Term(void){
     if(Consume('(')){
         NODE* node = Expr();
         if(!Consume(')')){
-            ErrorAt(tokens[tokenIdx].input, "開きカッコに対応する閉じカッコがありません");
+            ErrorAt(CAST_TOKEN_PTR(tokenVec->data[tokenIdx])->input, "開きカッコに対応する閉じカッコがありません");
         }
         return node;
     }
 
     //そうでなければ数値のハズ
-    if(tokens[tokenIdx].tokenType == TK_NUM){
-        return CreateNumNode(tokens[tokenIdx++].value);
+    if(CAST_TOKEN_PTR(tokenVec->data[tokenIdx])->tokenType == TK_NUM){
+        return CreateNumNode(CAST_TOKEN_PTR(tokenVec->data[tokenIdx++])->value);
     }
 
-    ErrorAt(tokens[tokenIdx].input, "数値でも閉じカッコでもないトークンです");
+    ErrorAt(CAST_TOKEN_PTR(tokenVec->data[tokenIdx])->input, "数値でも閉じカッコでもないトークンです");
 }
 NODE* Unary(void){
     if(Consume('+')){
@@ -269,7 +285,6 @@ NODE* Expr(void){
 void Tokenize(void){
     char* top = userInput;
 
-    int idx=0;
     while(*top){
         //空白文字をスキップ
         if(isspace(*top)){
@@ -279,9 +294,10 @@ void Tokenize(void){
 
         //+ - * / ( ) 記号
         if(*top == '+' || *top == '-' || *top == '(' || *top == ')' || *top == '*' || *top == '/'){
-            tokens[idx].tokenType = *top;
-            tokens[idx].input = top;
-            ++idx;
+            TOKEN* token = CreateToken();
+            token->tokenType = *top;
+            token->input = top;
+            PushVector(tokenVec, (void*)token);
             ++top;
             continue;
         }
@@ -290,9 +306,10 @@ void Tokenize(void){
         if(*top == '='){
             if(++top){
                 if(*top == '='){
-                    tokens[idx].tokenType = TK_EQ;
-                    tokens[idx].input = top;
-                    ++idx;
+                    TOKEN* token = CreateToken();
+                    token->tokenType = TK_EQ;
+                    token->input = top;
+                    PushVector(tokenVec, (void*)token);
                     ++top;
                     continue;
                 }else{
@@ -308,9 +325,10 @@ void Tokenize(void){
         if(*top == '!'){
             if(++top){
                 if(*top == '='){
-                    tokens[idx].tokenType = TK_NE;
-                    tokens[idx].input = top;
-                    ++idx;
+                    TOKEN* token = CreateToken();
+                    token->tokenType = TK_NE;
+                    token->input = top;
+                    PushVector(tokenVec, (void*)token);
                     ++top;
                     continue;
                 }else{
@@ -327,17 +345,18 @@ void Tokenize(void){
             ++top;
             if(*top){
                 if(*top == '='){
-                    tokens[idx].tokenType = TK_LE;
-                    tokens[idx].input = top;
-                    ++idx;
+                    TOKEN* token = CreateToken();
+                    token->tokenType = TK_LE;
+                    token->input = top;
+                    PushVector(tokenVec, (void*)token);
                     ++top;
                     continue;
                 }else{
                     --top;
-                    tokens[idx].tokenType = *top;
-                    tokens[idx].input = top;
-                    ++idx;
-                    ++top;
+                    TOKEN* token = CreateToken();
+                    token->tokenType = *top;
+                    token->input = top++;
+                    PushVector(tokenVec, (void*)token);
                     continue;
                 }
             }else{
@@ -350,16 +369,18 @@ void Tokenize(void){
             ++top;
             if(*top){
                 if(*top == '='){
-                    tokens[idx].tokenType = TK_GE;
-                    tokens[idx].input = top;
-                    ++idx;
+                    TOKEN* token = CreateToken();
+                    token->tokenType = TK_GE;
+                    token->input = top;
+                    PushVector(tokenVec, (void*)token);
                     ++top;
                     continue;
                 }else{
                     --top;
-                    tokens[idx].tokenType = *top;
-                    tokens[idx].input = top;
-                    ++idx;
+                    TOKEN* token = CreateToken();
+                    token->tokenType = *top;
+                    token->input = top;
+                    PushVector(tokenVec, (void*)token);
                     ++top;
                     continue;
                 }
@@ -371,18 +392,21 @@ void Tokenize(void){
 
         //数値
         if(isdigit(*top)){
-            tokens[idx].tokenType = TK_NUM;
-            tokens[idx].input = top;
-            tokens[idx].value = strtol(top, &top, 10);
-            ++idx;
+            TOKEN* token = CreateToken();
+            token->tokenType = TK_NUM;
+            token->input = top;
+            token->value = strtol(top, &top, 10);
+            PushVector(tokenVec, (void*)token);
             continue;
         }
 
         ErrorAt(top, "トークナイズできません");
     }
 
-    tokens[idx].tokenType = TK_EOF;
-    tokens[idx].input = top;
+    TOKEN* token = CreateToken();
+    token->tokenType = TK_EOF;
+    token->input = top;
+    PushVector(tokenVec, (void*)token);
 }
 
 void Gen(NODE* node){
@@ -462,6 +486,9 @@ int main(int argc, char **argv){
         RunVectorTest();
         exit(0);
     }
+
+    //トークンベクタ生成
+    tokenVec = CreateVector();
 
     //トークナイズしてパースする
     Tokenize();

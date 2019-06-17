@@ -1,3 +1,4 @@
+.vscode/ipch
 tmp
 dist
 test/*.s

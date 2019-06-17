@@ -14,4 +14,4 @@ test: clean ccpr
 		test/test.sh
 
 clean:
-		rm -f -d ccpr src/*.o *~ tmp/* dist
+		rm -f -d -r ccpr src/*.o *~ tmp dist

@@ -3,6 +3,7 @@ SRCS=$(wildcard src/*.c)
 OBJS=$(SRCS:.c=.o)
 
 ccpr: $(OBJS)
+		mkdir dist
 		$(CC) -o dist/ccpr $(OBJS) $(LDFLAGS)
 
 $(OBJS): src/ccpr.h
@@ -12,4 +13,4 @@ test: clean ccpr
 		test/test.sh
 
 clean:
-		rm -f ccpr src/*.o *~ tmp/*
+		rm -f ccpr src/*.o *~ tmp/* dist/*

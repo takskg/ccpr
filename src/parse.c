@@ -61,6 +61,8 @@ NODE* Term(void){
     }
 
     ErrorAt(CAST_TOKEN_PTR(tokenVec->data[tokenIdx])->input, "数値でも閉じカッコでもないトークンです");
+
+    return NULL;
 }
 NODE* Unary(void){
     if(Consume('+')){

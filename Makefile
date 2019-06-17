@@ -10,7 +10,8 @@ $(OBJS): src/ccpr.h
 
 test: clean ccpr
 		dist/ccpr --test
+		chmod a+x test/test.sh
 		test/test.sh
 
 clean:
-		rm -f ccpr src/*.o *~ tmp/* dist/*
+		rm -f -d ccpr src/*.o *~ tmp/* dist
